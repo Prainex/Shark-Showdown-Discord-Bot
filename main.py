@@ -11,7 +11,7 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
-handler = logging.FileHandler(filename="bot.log", encoding="utf-8", mode="w")
+handler = logging.FileHandler(filename="discord.log", encoding="utf-8", mode="w")
 
 
 @bot.event
