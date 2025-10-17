@@ -49,10 +49,61 @@ class Signups(commands.Cog):
         # Start background loop
         self.check_signups.start()
 
+    #Stop background loop
     def cog_unload(self):
         self.check_signups.cancel()
 
-    @tasks.loop(seconds=30)  # Check every 60 seconds
+    def build_signup_embed(self, row_dict: dict) -> discord.Embed:
+        team_name = row_dict.get("Team Name", "Unknown Team")
+
+        embed = discord.Embed(
+            title="Shark Attack #2",
+            description=f"**{team_name} joined the hunt!** \n",
+            color=discord.Color.purple()
+        )
+
+        embed.set_author(
+            name="Shark Showdown",
+            icon_url="https://sharkattack.sharkattackgaming.com/shark-attack-twt-pic.png"
+        )
+
+        '''Test Sheet Fields'''
+        # # Coaches
+        # coaches = [row_dict.get(f"Coach") for i in range(1, 2) if row_dict.get(f"Coach")]
+        # if coaches:
+        #     embed.add_field(name="Coaches", value="\n".join(coaches), inline=False)
+
+
+        # # Players
+        # players = [row_dict.get(f"Player {i}") for i in range(1, 6) if row_dict.get(f"Player {i}")]
+        # if players:
+        #     embed.add_field(name="Players", value="\n".join([f"Riot: {p}" for p in players]), inline=False)
+
+        # # Subs
+        # subs = [row_dict.get(f"Sub {i}") for i in range(1, 3) if row_dict.get(f"Sub {i}")]
+        # if subs:
+        #     embed.add_field(name="Substitutes", value="\n".join([f"Riot: {s}" for s in subs]), inline=False)
+
+        '''Main Sheet Fields'''
+        # Coaches
+        coaches = [row_dict.get(f"Coach Riot ID:") for i in range(1, 3) if row_dict.get(f"Coach Riot ID:")]
+        if coaches:
+            embed.add_field(name="Coaches", value="\n".join(coaches), inline=False)
+
+        # Players
+        players = [row_dict.get(f"Player {i} Riot ID:") for i in range(1, 6) if row_dict.get(f"Player {i} Riot ID:")]
+        if players:
+            embed.add_field(name="Players", value="\n".join([f"Riot: {p}" for p in players]), inline=False)
+
+        # Subs
+        subs = [row_dict.get(f"Sub {i} Riot ID:") for i in range(1, 3) if row_dict.get(f"Sub {i} Riot ID:")]
+        if subs:
+            embed.add_field(name="Substitutes", value="\n".join([f"Riot: {s}" for s in subs]), inline=False)
+
+        return embed
+
+
+    @tasks.loop(seconds=30)
     async def check_signups(self):
         if not self.sheet:
             return
@@ -78,39 +129,12 @@ class Signups(commands.Cog):
             new_rows = self.sheet.get(rng) or []
 
             # Announce each new signup
-            def build_signup_embed(self, row_dict: dict) -> discord.Embed:
-                team_name = row_dict.get("Team Name", "Unknown Team")
-                embed = discord.Embed(
-                    title="Shark Attack #2",
-                    description=f"**{team_name} joined the hunt!** \n",
-                    color=discord.Color.purple()
-                )
-            
-                embed.add_field(
-                    name="Players",
-                    value=(
-                    "Riot: dedmos#emo\n"
-                    "Riot: Calamity#6737\n"
-                    "Riot: om3y#8008\n"
-                    "Riot: scarred#872\n"
-                    "Riot: huphh#fcity"
-                 ),
-                    inline=False
-                )
-            
-                embed.set_author(name="Shark Showdown", icon_url="https://sharkattack.sharkattackgaming.com/shark-attack-twt-pic.png")
-                return embed
+            for row in new_rows:
+                row += [""] * (len(self.header) - len(row))
+                row_dict = dict(zip(self.header, row))
 
-            # for row in new_rows:
-            #     # pad row to match header length
-            #     if self.header:
-            #         row += [""] * (len(self.header) - len(row))
-            #         data = dict(zip(self.header, row))
-            #         team_name = data.get("Team Name") or row[0] if row else "Unknown Team"
-            #     else:
-            #         team_name = row[0] if row else "Unknown Team"
-
-            #     await channel.send(f"🎉 New team signed up: **{team_name}**")
+                embed = self.build_signup_embed(row_dict)
+                await channel.send(embed=embed)
 
             # Update pointer
             self.last_row_idx = current_last
@@ -119,51 +143,42 @@ class Signups(commands.Cog):
             print(f"❌ Failed to fetch new signups: {e}")
 
 
+    #Shows total number of teams signed up.
     @commands.command()
     async def teams(self, ctx):
-        """Shows total number of teams signed up."""
         if not self.sheet:
             await ctx.send("❌ Google Sheet not connected.")
             return
 
+        min_teams = 23
         try:
             teams = self.last_row_idx - 1  # exclude header
             if teams < 1:
-                teams = "there are no teams signed up yet :("
-            await ctx.send(f"📊 Total teams signed up: **{teams}**")
+                await ctx.send("📊 No teams have signed up yet.")
+            else:
+                await ctx.send(f"📊 Total teams signed up: **{teams}** out of {min_teams} to run the event!")
         except Exception as e:
             await ctx.send(f"❌ Failed to fetch records: {e}")
 
-    @commands.command()
-    async def asd(self,ctx):
-        try:
-            records = self.sheet.get_all_records()
-        except Exception as e:
-            print(f"❌ Failed to fetch records: {e}")
-            return
-        new_team = records[-1]
-        team_name = new_team.get("Team Name", "Unknown Team")
 
-        embed = discord.Embed(
-            title="Shark Attack #2",
-            description=f"**{team_name} has joined**\n\n[Signup now @](https://funhaver.gg/)",
-            color=discord.Color.purple()
-        )
-    
-        embed.add_field(
-            name="Players",
-            value=(
-            "Riot: dedmos#emo\n"
-            "Riot: Calamity#6737\n"
-            "Riot: om3y#8008\n"
-            "Riot: scarred#872\n"
-            "Riot: huphh#fcity"
-         ),
-            inline=False
-        )
-    
-        embed.set_author(name="FunhaverGG", icon_url="https://sharkattack.sharkattackgaming.com/shark-attack-twt-pic.png")
-        await ctx.send(embed=embed)
+    #Stops the recurring Google Sheets API calls.
+    @commands.command()
+    async def stop_signups(self, ctx):
+        if self.check_signups.is_running():
+            self.cog_unload()
+            await ctx.send("✅ The signup check task has been stopped.")
+        else:
+            await ctx.send("⚠️ The signup check task is not currently running.")
+
+
+    #Restarts the recurring Google Sheets API calls.
+    @commands.command()
+    async def start_signups(self, ctx):
+        if not self.check_signups.is_running():
+            self.check_signups.start()
+            await ctx.send("✅ The signup check task has been started.")
+        else:
+            await ctx.send("⚠️ The signup check task is already running.")
 
 async def setup(bot):
     await bot.add_cog(Signups(bot))
